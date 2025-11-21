@@ -121,7 +121,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-gray-100 border-4 border-black p-4 text-xl font-bold focus:outline-none focus:border-neo-primary text-black placeholder-gray-500"
+              className="w-full bg-white border-4 border-black p-4 text-xl font-bold focus:outline-none focus:border-neo-primary text-black placeholder-gray-500"
               placeholder="PASSWORD..."
               autoFocus
             />
@@ -209,7 +209,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                        <div className="space-y-2">
                          <label className="font-bold text-sm text-black">TITLE</label>
                          <input 
-                           className="w-full border-2 border-black p-2 focus:ring-2 focus:ring-neo-primary focus:outline-none text-black placeholder-gray-400"
+                           className="w-full bg-white border-2 border-black p-2 focus:ring-2 focus:ring-neo-primary focus:outline-none text-black placeholder-gray-400"
                            value={editingProject.title || ''} 
                            onChange={e => setEditingProject({...editingProject, title: e.target.value})}
                          />
@@ -217,7 +217,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                        <div className="space-y-2">
                          <label className="font-bold text-sm text-black">IMAGE URL</label>
                          <input 
-                           className="w-full border-2 border-black p-2 focus:ring-2 focus:ring-neo-primary focus:outline-none text-black placeholder-gray-400"
+                           className="w-full bg-white border-2 border-black p-2 focus:ring-2 focus:ring-neo-primary focus:outline-none text-black placeholder-gray-400"
                            value={editingProject.image || ''} 
                            onChange={e => setEditingProject({...editingProject, image: e.target.value})}
                          />
@@ -225,7 +225,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                        <div className="space-y-2 md:col-span-2">
                          <label className="font-bold text-sm text-black">DESCRIPTION</label>
                          <textarea 
-                           className="w-full border-2 border-black p-2 h-24 focus:ring-2 focus:ring-neo-primary focus:outline-none text-black placeholder-gray-400"
+                           className="w-full bg-white border-2 border-black p-2 h-24 focus:ring-2 focus:ring-neo-primary focus:outline-none text-black placeholder-gray-400"
                            value={editingProject.description || ''} 
                            onChange={e => setEditingProject({...editingProject, description: e.target.value})}
                          />
@@ -233,7 +233,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                        <div className="space-y-2">
                          <label className="font-bold text-sm text-black">TAGS (comma separated)</label>
                          <input 
-                           className="w-full border-2 border-black p-2 focus:ring-2 focus:ring-neo-primary focus:outline-none text-black placeholder-gray-400"
+                           className="w-full bg-white border-2 border-black p-2 focus:ring-2 focus:ring-neo-primary focus:outline-none text-black placeholder-gray-400"
                            value={Array.isArray(editingProject.tags) ? editingProject.tags.join(', ') : editingProject.tags || ''} 
                            onChange={e => setEditingProject({...editingProject, tags: e.target.value.split(',')})}
                          />
@@ -307,7 +307,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                        <div className="space-y-2">
                          <label className="font-bold text-sm text-black">TITLE</label>
                          <input 
-                           className="w-full border-2 border-black p-2 focus:ring-2 focus:ring-neo-accent focus:outline-none text-black placeholder-gray-400"
+                           className="w-full bg-white border-2 border-black p-2 focus:ring-2 focus:ring-neo-accent focus:outline-none text-black placeholder-gray-400"
                            value={editingPost.title || ''} 
                            onChange={e => setEditingPost({...editingPost, title: e.target.value})}
                          />
@@ -316,7 +316,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                         <div className="space-y-2">
                             <label className="font-bold text-sm text-black">DATE</label>
                             <input 
-                            className="w-full border-2 border-black p-2 focus:ring-2 focus:ring-neo-accent focus:outline-none text-black placeholder-gray-400"
+                            className="w-full bg-white border-2 border-black p-2 focus:ring-2 focus:ring-neo-accent focus:outline-none text-black placeholder-gray-400"
                             value={editingPost.date || ''} 
                             onChange={e => setEditingPost({...editingPost, date: e.target.value})}
                             />
@@ -324,7 +324,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                         <div className="space-y-2">
                             <label className="font-bold text-sm text-black">READ TIME</label>
                             <input 
-                            className="w-full border-2 border-black p-2 focus:ring-2 focus:ring-neo-accent focus:outline-none text-black placeholder-gray-400"
+                            className="w-full bg-white border-2 border-black p-2 focus:ring-2 focus:ring-neo-accent focus:outline-none text-black placeholder-gray-400"
                             value={editingPost.readTime || ''} 
                             onChange={e => setEditingPost({...editingPost, readTime: e.target.value})}
                             placeholder="5 MIN READ"
@@ -334,7 +334,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                        <div className="space-y-2">
                          <label className="font-bold text-sm text-black">EXCERPT</label>
                          <textarea 
-                           className="w-full border-2 border-black p-2 h-24 focus:ring-2 focus:ring-neo-accent focus:outline-none text-black placeholder-gray-400"
+                           className="w-full bg-white border-2 border-black p-2 h-24 focus:ring-2 focus:ring-neo-accent focus:outline-none text-black placeholder-gray-400"
                            value={editingPost.excerpt || ''} 
                            onChange={e => setEditingPost({...editingPost, excerpt: e.target.value})}
                          />
@@ -342,7 +342,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                        <div className="space-y-2">
                          <label className="font-bold text-sm text-black">TAGS (comma separated)</label>
                          <input 
-                           className="w-full border-2 border-black p-2 focus:ring-2 focus:ring-neo-accent focus:outline-none text-black placeholder-gray-400"
+                           className="w-full bg-white border-2 border-black p-2 focus:ring-2 focus:ring-neo-accent focus:outline-none text-black placeholder-gray-400"
                            value={Array.isArray(editingPost.tags) ? editingPost.tags.join(', ') : editingPost.tags || ''} 
                            onChange={e => setEditingPost({...editingPost, tags: e.target.value.split(',')})}
                          />
@@ -403,7 +403,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                             <div className="space-y-2">
                                 <label className="font-bold text-sm text-black">DATA API ENDPOINT URL</label>
                                 <input 
-                                    className="w-full border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
+                                    className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
                                     placeholder="https://..."
                                     value={dbConfig.apiUrl}
                                     onChange={(e) => setDbConfig({...dbConfig, apiUrl: e.target.value})}
@@ -413,7 +413,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                                 <label className="font-bold text-sm text-black">API KEY</label>
                                 <input 
                                     type="password"
-                                    className="w-full border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
+                                    className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
                                     placeholder="Secret Key..."
                                     value={dbConfig.apiKey}
                                     onChange={(e) => setDbConfig({...dbConfig, apiKey: e.target.value})}
@@ -423,7 +423,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                                 <div className="space-y-2">
                                     <label className="font-bold text-sm text-black">CLUSTER NAME</label>
                                     <input 
-                                        className="w-full border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
+                                        className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
                                         placeholder="Cluster0"
                                         value={dbConfig.cluster}
                                         onChange={(e) => setDbConfig({...dbConfig, cluster: e.target.value})}
@@ -432,7 +432,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                                 <div className="space-y-2">
                                     <label className="font-bold text-sm text-black">DATABASE NAME</label>
                                     <input 
-                                        className="w-full border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
+                                        className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
                                         placeholder="portfolio"
                                         value={dbConfig.database}
                                         onChange={(e) => setDbConfig({...dbConfig, database: e.target.value})}
