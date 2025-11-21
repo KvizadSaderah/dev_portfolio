@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DEV_OS // NEO_BRUTALISM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              mono: ['"Space Mono"', 'monospace'],
+              display: ['"Syne"', 'sans-serif'],
+            },
+            colors: {
+              neo: {
+                bg: '#FFFAF0',
+                black: '#121212',
+                primary: '#FF4D00', // Orange
+                secondary: '#A3FF00', // Lime
+                accent: '#00F0FF', // Cyan
+                pink: '#FF0099',
+              }
+            },
+            boxShadow: {
+              'neo': '5px 5px 0px 0px rgba(18, 18, 18, 1)',
+              'neo-lg': '10px 10px 0px 0px rgba(18, 18, 18, 1)',
+              'neo-hover': '2px 2px 0px 0px rgba(18, 18, 18, 1)',
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+      body {
+        background-color: #FFFAF0;
+        cursor: crosshair;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+      }
+      .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+      @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+      }
+      .animate-float {
+        animation: float 4s ease-in-out infinite;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
