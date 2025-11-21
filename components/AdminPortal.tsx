@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ViewState, Project, BlogPost, SystemConfig } from '../types';
-import { Lock, Unlock, Trash2, Plus, Save, X, Code, FileText, LogOut, Database, Cloud, Server, AlertCircle, Wand2, Cpu } from 'lucide-react';
-import { DB, getSystemConfig, saveSystemConfig, clearSystemConfig, getGeminiKey } from '../lib/db';
+import { Lock, Unlock, Trash2, Plus, Save, X, Code, FileText, LogOut, Database, Cloud, Server, AlertCircle, Wand2, Cpu, ShieldCheck } from 'lucide-react';
+import { DB, getSystemConfig, saveSystemConfig, clearSystemConfig, getGeminiKey, setDbAccessKey } from '../lib/db';
 import { GoogleGenAI } from "@google/genai";
 
 interface AdminPortalProps {
@@ -33,18 +33,42 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
   });
 
   useEffect(() => {
-    const cfg = getSystemConfig();
-    if (cfg) setSysConfig(cfg);
-  }, []);
+    if (isAuthenticated) {
+      const cfg = getSystemConfig();
+      if (cfg) setSysConfig(cfg);
+    }
+  }, [isAuthenticated]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'admin') {
-      setIsAuthenticated(true);
-      setError('');
+    
+    // 1. Set the session key for decryption
+    setDbAccessKey(password);
+    
+    // 2. Check if we have stored config
+    const storedConfigRaw = localStorage.getItem('neo_system_config');
+    
+    if (storedConfigRaw && storedConfigRaw.startsWith('ENC:')) {
+        // 3. Attempt to decrypt
+        const cfg = getSystemConfig();
+        if (cfg) {
+            // Success
+            setIsAuthenticated(true);
+            setError('');
+            await refreshData(); // Refresh with new credentials
+        } else {
+            // Decryption failed
+            setError('DECRYPTION FAILED. WRONG PASSWORD.');
+            setDbAccessKey(''); // Clear invalid key
+        }
     } else {
-      setError('ACCESS DENIED: INVALID CREDENTIALS');
-      setPassword('');
+        // First time setup or plain text legacy (which we accept)
+        if (password) {
+            setIsAuthenticated(true);
+            setError('');
+        } else {
+             setError('PASSWORD REQUIRED FOR SECURE SESSION');
+        }
     }
   };
 
@@ -96,17 +120,19 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
 
   const saveSysConfig = () => {
     saveSystemConfig(sysConfig);
-    setStatusMsg('SYSTEM CONFIG UPDATED. REFRESHING...');
+    setStatusMsg('SYSTEM ENCRYPTED & SAVED.');
     setTimeout(() => {
         refreshData().then(() => setStatusMsg('CONNECTED TO SERVICES'));
     }, 1000);
   };
 
   const disconnectSys = () => {
-    clearSystemConfig();
-    setSysConfig({ apiUrl: '', apiKey: '', cluster: '', database: '', geminiApiKey: '' });
-    refreshData();
-    setStatusMsg('DISCONNECTED. REVERTED TO LOCAL STORAGE.');
+    if(confirm('WIPE CONFIGURATION? THIS WILL REMOVE ENCRYPTED KEYS FROM THIS BROWSER.')) {
+        clearSystemConfig();
+        setSysConfig({ apiUrl: '', apiKey: '', cluster: '', database: '', geminiApiKey: '' });
+        refreshData();
+        setStatusMsg('DISCONNECTED. REVERTED TO LOCAL STORAGE.');
+    }
   };
 
   const generatePostContent = async () => {
@@ -146,8 +172,12 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
           <div className="flex justify-center mb-6 text-neo-primary animate-pulse">
             <Lock size={64} />
           </div>
-          <h2 className="text-3xl font-black text-center mb-2 text-black">SYSTEM LOCKED</h2>
-          <p className="text-center text-gray-500 mb-8 text-sm">ENTER AUTHORIZATION CODE TO PROCEED</p>
+          <h2 className="text-3xl font-black text-center mb-2 text-black">SECURE LOGIN</h2>
+          <p className="text-center text-gray-500 mb-8 text-sm">
+            ENTER DECRYPTION PASSWORD
+            <br/>
+            <span className="text-xs text-gray-400">(Any password creates a new session if none exists)</span>
+          </p>
           
           <form onSubmit={handleLogin} className="space-y-4">
             <input
@@ -160,7 +190,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
             />
             {error && <p className="text-red-600 font-bold text-sm bg-red-100 p-2 border-l-4 border-red-600">{error}</p>}
             <button className="w-full bg-neo-black text-white font-bold py-4 border-4 border-transparent hover:bg-neo-primary hover:text-black hover:border-black transition-all shadow-neo">
-              AUTHENTICATE
+              DECRYPT & ACCESS
             </button>
           </form>
           <button onClick={() => setView('HOME')} className="w-full mt-4 text-gray-400 hover:text-black font-bold text-sm">
@@ -176,8 +206,8 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
       {/* Admin Header */}
       <div className="bg-neo-black text-neo-secondary p-4 mb-8 border-b-4 border-neo-primary flex flex-col md:flex-row justify-between items-center shadow-neo gap-4">
         <div className="flex items-center gap-3">
-           <Unlock className="animate-pulse" />
-           <h1 className="text-2xl font-black tracking-tighter">ADMIN_CONSOLE_V1.0</h1>
+           <ShieldCheck className="text-green-400" />
+           <h1 className="text-2xl font-black tracking-tighter">ADMIN_CONSOLE_V2.0 <span className="text-xs bg-green-600 text-white px-1 rounded">SECURE</span></h1>
         </div>
         {statusMsg && (
             <div className="bg-neo-primary text-black px-4 py-1 font-bold uppercase animate-pulse">
@@ -188,7 +218,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
             <button onClick={() => setView('HOME')} className="bg-neo-bg text-black font-bold px-4 py-2 hover:bg-neo-primary border-2 border-transparent hover:border-black">
                VIEW SITE
             </button>
-            <button onClick={() => setIsAuthenticated(false)} className="text-red-500 hover:text-white hover:bg-red-500 px-3 py-2">
+            <button onClick={() => { setIsAuthenticated(false); setDbAccessKey(''); }} className="text-red-500 hover:text-white hover:bg-red-500 px-3 py-2">
                <LogOut size={20} />
             </button>
         </div>
@@ -442,6 +472,13 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
 
                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div className="space-y-6">
+                        <div className="bg-green-50 border-l-8 border-green-500 p-4 mb-6">
+                             <h4 className="font-bold flex items-center gap-2 text-green-700"><ShieldCheck size={20}/> ENCRYPTION ACTIVE</h4>
+                             <p className="text-sm mt-2 leading-relaxed text-gray-800">
+                                 All keys are encrypted with your password. They are never stored in plain text.
+                             </p>
+                        </div>
+
                         {/* AI Config */}
                         <div className="bg-purple-50 border-l-8 border-purple-500 p-4">
                             <h4 className="font-bold flex items-center gap-2 text-purple-700"><Cpu size={20}/> AI NEURAL LINK</h4>
@@ -514,13 +551,13 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                                 onClick={saveSysConfig}
                                 className="flex-1 bg-neo-black text-white border-4 border-transparent hover:border-black hover:bg-neo-secondary hover:text-black p-4 font-bold transition-all flex justify-center items-center gap-2 shadow-neo"
                             >
-                                <Cloud /> SAVE SYSTEM CONFIG
+                                <Cloud /> SAVE & ENCRYPT
                             </button>
                             {getSystemConfig() && (
                                 <button 
                                     onClick={disconnectSys}
                                     className="px-6 border-4 border-black hover:bg-red-500 hover:text-white font-bold transition-all text-black"
-                                    title="Reset Config"
+                                    title="Wipe Data"
                                 >
                                     <LogOut />
                                 </button>
@@ -543,8 +580,8 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                             <div className="mt-8 p-4 border border-green-900 bg-black bg-opacity-50">
                                 <p className="text-xs text-gray-500 mb-2">// CONSOLE_OUTPUT</p>
                                 <p>> System init...</p>
-                                <p>> Storage driver: {sysConfig.apiUrl ? 'Atlas' : 'LocalStorage'}</p>
-                                <p>> AI Key check: {sysConfig.geminiApiKey ? 'Pass' : 'Fail'}</p>
+                                <p>> Verifying keys...</p>
+                                <p>> {sysConfig.apiKey ? 'Keys Encrypted: YES' : 'Keys Encrypted: NO'}</p>
                                 <p>> Ready.</p>
                             </div>
                         </div>

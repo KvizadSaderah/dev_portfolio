@@ -1,4 +1,5 @@
 import { Project, BlogPost, SystemConfig } from '../types';
+import { encryptData, decryptData } from './security';
 
 // Defaults
 const DEFAULT_PROJECTS: Project[] = [
@@ -118,15 +119,47 @@ The trick to responsive asymmetry is to revert to a standard stack on mobile. Ch
 // Config Management
 const CONFIG_KEY = 'neo_system_config';
 
+// Session Key (The user's password) - only exists in memory
+let sessionKey: string | null = null;
+
+export const setDbAccessKey = (key: string) => {
+  sessionKey = key;
+};
+
 export const getSystemConfig = (): SystemConfig | null => {
   try {
-    const cfg = localStorage.getItem(CONFIG_KEY);
-    return cfg ? JSON.parse(cfg) : null;
-  } catch { return null; }
+    const raw = localStorage.getItem(CONFIG_KEY);
+    if (!raw) return null;
+
+    // If it's not encrypted, return it (legacy support or first run)
+    // In production, you might force encryption.
+    if (!raw.startsWith('ENC:')) {
+      return JSON.parse(raw);
+    }
+
+    // If encrypted, we need the session key
+    if (!sessionKey) {
+      console.warn("Access Denied: Encrypted config found but no session key provided.");
+      return null;
+    }
+
+    const decrypted = decryptData(raw, sessionKey);
+    if (!decrypted) return null; // Wrong password or corrupt data
+
+    return JSON.parse(decrypted);
+  } catch (e) { 
+    return null; 
+  }
 };
 
 export const saveSystemConfig = (config: SystemConfig) => {
-  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+  if (!sessionKey) {
+    console.error("Cannot save config: No session key set.");
+    return;
+  }
+  const json = JSON.stringify(config);
+  const encrypted = encryptData(json, sessionKey);
+  localStorage.setItem(CONFIG_KEY, encrypted);
 };
 
 export const clearSystemConfig = () => {
@@ -136,14 +169,13 @@ export const clearSystemConfig = () => {
 export const getGeminiKey = (): string => {
   const config = getSystemConfig();
   if (config?.geminiApiKey) return config.geminiApiKey;
-  // Fallback to env if available (development mode)
   return typeof process !== 'undefined' && process.env && process.env.API_KEY ? process.env.API_KEY : '';
 };
 
 // API Helper
 const mongoFetch = async (action: string, collection: string, body: any = {}) => {
   const config = getSystemConfig();
-  if (!config || !config.apiUrl) throw new Error("No Mongo Configuration");
+  if (!config || !config.apiUrl) throw new Error("No Mongo Configuration or Access Denied");
 
   const response = await fetch(`${config.apiUrl}/action/${action}`, {
     method: 'POST',
@@ -176,8 +208,6 @@ export const DB = {
         return res.documents ? res.documents : [];
       } catch (e) {
         console.error("Mongo Error", e);
-        // Fallback to local if fetch fails? Or just return empty/default. 
-        // Let's return defaults if fetch fails to keep site usable.
         return DEFAULT_PROJECTS;
       }
     } else {
