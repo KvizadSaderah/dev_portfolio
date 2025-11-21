@@ -167,9 +167,15 @@ export const clearSystemConfig = () => {
 };
 
 export const getGeminiKey = (): string => {
+  // Priority 1: Environment variable (Vercel/build-time)
+  const envKey = typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY : '';
+  if (envKey) return envKey;
+
+  // Priority 2: Admin config (localStorage)
   const config = getSystemConfig();
   if (config?.geminiApiKey) return config.geminiApiKey;
-  return typeof process !== 'undefined' && process.env && process.env.API_KEY ? process.env.API_KEY : '';
+
+  return '';
 };
 
 // API Helper

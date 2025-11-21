@@ -75,7 +75,15 @@ Required environment variables for deployment:
 |----------|-------------|----------|
 | `GEMINI_API_KEY` | Google Gemini API key for AI features | Yes (for AI terminal) |
 
-**Note:** The app will work without the API key, but the AI terminal assistant will be disabled.
+**API Key Priority:**
+1. **Environment variable** (Vercel/build-time) - Preferred ⭐
+2. **Admin portal** (localStorage) - Fallback
+
+**Note:**
+- When deploying to Vercel, always set `GEMINI_API_KEY` in project settings
+- The environment variable takes priority over admin panel configuration
+- The app will work without the API key, but the AI terminal assistant will be disabled
+- You can also use `VITE_GEMINI_API_KEY` for local development
 
 ## Build for Production
 
