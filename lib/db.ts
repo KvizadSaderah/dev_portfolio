@@ -1,5 +1,43 @@
-import { Project, BlogPost, SystemConfig } from '../types';
-import { encryptData, decryptData } from './security';
+import { Project, BlogPost } from '../types';
+
+// MongoDB Configuration from Environment Variables
+interface MongoConfig {
+  apiUrl: string;
+  apiKey: string;
+  database: string;
+  cluster: string;
+}
+
+const getMongoConfig = (): MongoConfig | null => {
+  // Read from environment variables (injected by Vite during build)
+  let apiUrl = '';
+  let apiKey = '';
+  let database = '';
+  let cluster = '';
+
+  // Try import.meta.env (Vite standard)
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    apiUrl = import.meta.env.MONGODB_API_URL || import.meta.env.VITE_MONGODB_API_URL || '';
+    apiKey = import.meta.env.MONGODB_API_KEY || import.meta.env.VITE_MONGODB_API_KEY || '';
+    database = import.meta.env.MONGODB_DATABASE || import.meta.env.VITE_MONGODB_DATABASE || 'portfolio';
+    cluster = import.meta.env.MONGODB_CLUSTER || import.meta.env.VITE_MONGODB_CLUSTER || 'Cluster0';
+  }
+
+  // Fallback to process.env (works with define in vite.config)
+  if (!apiUrl && typeof process !== 'undefined' && process.env) {
+    apiUrl = process.env.MONGODB_API_URL || '';
+    apiKey = process.env.MONGODB_API_KEY || '';
+    database = process.env.MONGODB_DATABASE || 'portfolio';
+    cluster = process.env.MONGODB_CLUSTER || 'Cluster0';
+  }
+
+  // Return null if not configured
+  if (!apiUrl || !apiKey) {
+    return null;
+  }
+
+  return { apiUrl, apiKey, database, cluster };
+};
 
 // Defaults
 const DEFAULT_PROJECTS: Project[] = [
@@ -116,84 +154,46 @@ The trick to responsive asymmetry is to revert to a standard stack on mobile. Ch
   }
 ];
 
-// Config Management
-const CONFIG_KEY = 'neo_system_config';
-
-// Session Key (The user's password) - only exists in memory
-let sessionKey: string | null = null;
-
-export const setDbAccessKey = (key: string) => {
-  sessionKey = key;
-};
-
-export const getSystemConfig = (): SystemConfig | null => {
-  try {
-    const raw = localStorage.getItem(CONFIG_KEY);
-    if (!raw) return null;
-
-    // If it's not encrypted, return it (legacy support or first run)
-    // In production, you might force encryption.
-    if (!raw.startsWith('ENC:')) {
-      return JSON.parse(raw);
-    }
-
-    // If encrypted, we need the session key
-    if (!sessionKey) {
-      console.warn("Access Denied: Encrypted config found but no session key provided.");
-      return null;
-    }
-
-    const decrypted = decryptData(raw, sessionKey);
-    if (!decrypted) return null; // Wrong password or corrupt data
-
-    return JSON.parse(decrypted);
-  } catch (e) { 
-    return null; 
-  }
-};
-
-export const saveSystemConfig = (config: SystemConfig) => {
-  if (!sessionKey) {
-    console.error("Cannot save config: No session key set.");
-    return;
-  }
-  const json = JSON.stringify(config);
-  const encrypted = encryptData(json, sessionKey);
-  localStorage.setItem(CONFIG_KEY, encrypted);
-};
-
-export const clearSystemConfig = () => {
-  localStorage.removeItem(CONFIG_KEY);
-};
-
+// Get Gemini API Key from Environment
 export const getGeminiKey = (): string => {
-  // Priority 1: Environment variable (Vercel/build-time)
-  // Check both import.meta.env (Vite standard) and process.env (define)
-  let envKey = '';
+  let apiKey = '';
 
-  // Try import.meta.env first (works with VITE_ prefix)
+  // Try import.meta.env (Vite standard)
   if (typeof import.meta !== 'undefined' && import.meta.env) {
-    envKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY || '';
+    apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY || '';
   }
 
   // Fallback to process.env (works with define in vite.config)
-  if (!envKey && typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
-    envKey = process.env.GEMINI_API_KEY;
+  if (!apiKey && typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+    apiKey = process.env.GEMINI_API_KEY;
   }
 
-  if (envKey) return envKey;
-
-  // Priority 2: Admin config (localStorage)
-  const config = getSystemConfig();
-  if (config?.geminiApiKey) return config.geminiApiKey;
-
-  return '';
+  return apiKey;
 };
 
-// API Helper
+// Get Admin Password from Environment
+export const getAdminPassword = (): string => {
+  let password = '';
+
+  // Try import.meta.env (Vite standard)
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    password = import.meta.env.VITE_ADMIN_PASSWORD || import.meta.env.ADMIN_PASSWORD || '';
+  }
+
+  // Fallback to process.env (works with define in vite.config)
+  if (!password && typeof process !== 'undefined' && process.env && process.env.ADMIN_PASSWORD) {
+    password = process.env.ADMIN_PASSWORD;
+  }
+
+  return password;
+};
+
+// API Helper for MongoDB Data API
 const mongoFetch = async (action: string, collection: string, body: any = {}) => {
-  const config = getSystemConfig();
-  if (!config || !config.apiUrl) throw new Error("No Mongo Configuration or Access Denied");
+  const config = getMongoConfig();
+  if (!config) {
+    throw new Error("MongoDB not configured. Set MONGODB_API_URL and MONGODB_API_KEY environment variables.");
+  }
 
   const response = await fetch(`${config.apiUrl}/action/${action}`, {
     method: 'POST',
@@ -218,28 +218,29 @@ const mongoFetch = async (action: string, collection: string, body: any = {}) =>
 export const DB = {
   // PROJECTS
   getProjects: async (): Promise<Project[]> => {
-    const config = getSystemConfig();
-    // Check if MongoDB is configured (requires URL and Key)
-    if (config && config.apiUrl && config.apiKey) {
+    const config = getMongoConfig();
+    // Check if MongoDB is configured
+    if (config) {
       try {
         const res = await mongoFetch('find', 'projects', { sort: { id: 1 } });
         return res.documents ? res.documents : [];
       } catch (e) {
-        console.error("Mongo Error", e);
+        console.error("MongoDB Error:", e);
         return DEFAULT_PROJECTS;
       }
     } else {
+      // Fallback to localStorage if MongoDB not configured
       const local = localStorage.getItem('neo_projects');
       return local ? JSON.parse(local) : DEFAULT_PROJECTS;
     }
   },
 
   saveProject: async (project: Project) => {
-    const config = getSystemConfig();
-    if (config && config.apiUrl && config.apiKey) {
-      // Check if exists to decide insert or update
+    const config = getMongoConfig();
+    if (config) {
+      // MongoDB mode
       const existing = await mongoFetch('findOne', 'projects', { filter: { id: project.id } });
-      
+
       if (existing && existing.document) {
          await mongoFetch('updateOne', 'projects', {
            filter: { id: project.id },
@@ -249,7 +250,7 @@ export const DB = {
          await mongoFetch('insertOne', 'projects', { document: project });
       }
     } else {
-      // Local Storage
+      // localStorage mode
       const projects = await DB.getProjects();
       const index = projects.findIndex(p => p.id === project.id);
       let newProjects;
@@ -263,8 +264,8 @@ export const DB = {
   },
 
   deleteProject: async (id: number) => {
-    const config = getSystemConfig();
-    if (config && config.apiUrl && config.apiKey) {
+    const config = getMongoConfig();
+    if (config) {
       await mongoFetch('deleteOne', 'projects', { filter: { id: id } });
     } else {
       const projects = await DB.getProjects();
@@ -275,24 +276,25 @@ export const DB = {
 
   // POSTS
   getPosts: async (): Promise<BlogPost[]> => {
-    const config = getSystemConfig();
-    if (config && config.apiUrl && config.apiKey) {
+    const config = getMongoConfig();
+    if (config) {
       try {
         const res = await mongoFetch('find', 'posts', { sort: { id: -1 } });
         return res.documents ? res.documents : [];
       } catch (e) {
-        console.error("Mongo Error", e);
+        console.error("MongoDB Error:", e);
         return DEFAULT_POSTS;
       }
     } else {
+      // Fallback to localStorage
       const local = localStorage.getItem('neo_posts');
       return local ? JSON.parse(local) : DEFAULT_POSTS;
     }
   },
 
   savePost: async (post: BlogPost) => {
-    const config = getSystemConfig();
-    if (config && config.apiUrl && config.apiKey) {
+    const config = getMongoConfig();
+    if (config) {
       const existing = await mongoFetch('findOne', 'posts', { filter: { id: post.id } });
       if (existing && existing.document) {
         await mongoFetch('updateOne', 'posts', {
@@ -316,8 +318,8 @@ export const DB = {
   },
 
   deletePost: async (id: number) => {
-    const config = getSystemConfig();
-    if (config && config.apiUrl && config.apiKey) {
+    const config = getMongoConfig();
+    if (config) {
       await mongoFetch('deleteOne', 'posts', { filter: { id: id } });
     } else {
       const posts = await DB.getPosts();
