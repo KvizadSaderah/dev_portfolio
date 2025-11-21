@@ -79,11 +79,12 @@ Required environment variables for deployment:
 1. **Environment variable** (Vercel/build-time) - Preferred ⭐
 2. **Admin portal** (localStorage) - Fallback
 
-**Note:**
-- When deploying to Vercel, always set `GEMINI_API_KEY` in project settings
-- The environment variable takes priority over admin panel configuration
+**Important Notes:**
+- **For Vercel deployment:** Set `GEMINI_API_KEY` (without VITE_ prefix) in Project Settings → Environment Variables
+- After adding the environment variable, you **must redeploy** for changes to take effect
+- The environment variable is injected during build time and takes priority over admin panel
+- For local development, you can use either `GEMINI_API_KEY` or `VITE_GEMINI_API_KEY` in `.env.local`
 - The app will work without the API key, but the AI terminal assistant will be disabled
-- You can also use `VITE_GEMINI_API_KEY` for local development
 
 ## Build for Production
 
