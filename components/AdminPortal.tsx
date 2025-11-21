@@ -188,7 +188,25 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
               placeholder="PASSWORD..."
               autoFocus
             />
-            {error && <p className="text-red-600 font-bold text-sm bg-red-100 p-2 border-l-4 border-red-600">{error}</p>}
+            {error && (
+              <>
+                <p className="text-red-600 font-bold text-sm bg-red-100 p-2 border-l-4 border-red-600">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('⚠️ WARNING: This will DELETE all encrypted admin settings and API keys from localStorage.\n\nYou will lose:\n- Saved API keys\n- MongoDB configuration\n- All encrypted admin data\n\nContinue?')) {
+                      localStorage.removeItem('neo_system_config');
+                      setError('');
+                      alert('✅ Admin data cleared! You can now login with any new password.');
+                      window.location.reload();
+                    }
+                  }}
+                  className="w-full text-xs text-red-600 hover:text-red-800 hover:bg-red-50 underline py-2 mt-2 border-2 border-red-200"
+                >
+                  🔓 Forgot password? Reset all admin data
+                </button>
+              </>
+            )}
             <button className="w-full bg-neo-black text-white font-bold py-4 border-4 border-transparent hover:bg-neo-primary hover:text-black hover:border-black transition-all shadow-neo">
               DECRYPT & ACCESS
             </button>
