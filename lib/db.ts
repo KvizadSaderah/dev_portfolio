@@ -1,4 +1,4 @@
-import { Project, BlogPost, MongoConfig } from '../types';
+import { Project, BlogPost, SystemConfig } from '../types';
 
 // Defaults
 const DEFAULT_PROJECTS: Project[] = [
@@ -46,16 +46,18 @@ const DEFAULT_POSTS: BlogPost[] = [
     title: "Why Neobrutalism is the Future of UI",
     date: "OCT 24, 2023",
     excerpt: "Minimalism is dead. Long live the raw, unfiltered expression of the web. Here is why hard shadows and bold borders are taking over.",
-    content: `Minimalism has served us well for the last decade. Lots of whitespace, subtle shadows, and rounded corners safe, clean, and corporate. But the web was never meant to be just a sterile corridor of SaaS landing pages. It was meant to be a canvas for expression.
+    content: `## The Death of Flat Design
+Minimalism has served us well for the last decade. Lots of whitespace, subtle shadows, and rounded corners safe, clean, and corporate. But the web was never meant to be just a sterile corridor of SaaS landing pages. It was meant to be a canvas for expression.
 
 Neobrutalism isn't just an aesthetic choice; it's a reaction against the homogenization of web design. By using high contrast, clashing colors, and raw layout structures, we force the user to pay attention. We stop hiding the computer behind layers of metaphor and instead celebrate the digital nature of the medium.
 
-Key characteristics include:
-- Default system fonts or bold, idiosyncratic typography.
-- Pure black (#000000) borders and shadows.
-- High saturation colors that vibrate against each other.
-- A disregard for traditional spacing rules in favor of density and impact.
+## Key Characteristics
+- **Typography**: Default system fonts or bold, idiosyncratic typography.
+- **Borders**: Pure black (#000000) borders and shadows.
+- **Color**: High saturation colors that vibrate against each other.
+- **Layout**: A disregard for traditional spacing rules in favor of density and impact.
 
+## Conclusion
 Is it for everyone? No. But that's the point. Good design should have an opinion.`,
     readTime: "5 MIN READ",
     tags: ["DESIGN", "OPINION"]
@@ -67,11 +69,17 @@ Is it for everyone? No. But that's the point. Good design should have an opinion
     excerpt: "Deep dive into useEffect nuances, custom hooks patterns, and performance optimization techniques that you might be missing.",
     content: `React Hooks have fundamentally changed how we write components, but many developers are still stuck in class-component patterns or are misusing dependency arrays.
 
+## The useEffect Trap
 One of the biggest pitfalls is the \`useEffect\` hook. It's not a lifecycle method. It's a synchronization engine. If you're trying to mirror \`componentDidMount\`, you're thinking about it wrong. You should be thinking: "how do I keep this external system in sync with my state?"
 
+## Custom Hooks
 Let's talk about Custom Hooks. They are the secret weapon of clean React architecture. If you find yourself writing the same \`useEffect\` logic in two different components, extract it. 
 
-Example: \`useWindowSize\`, \`useLocalStorage\`, \`useFetch\`. These aren't just utilities; they are domain logic encapsulations.`,
+- **useWindowSize**: For responsive logic
+- **useLocalStorage**: For persistence
+- **useFetch**: For data fetching
+
+These aren't just utilities; they are domain logic encapsulations.`,
     readTime: "12 MIN READ",
     tags: ["CODE", "REACT"]
   },
@@ -84,6 +92,7 @@ Example: \`useWindowSize\`, \`useLocalStorage\`, \`useFetch\`. These aren't just
 
 I was wrong. The concern isn't the file extension; it's the component. Co-locating styles with structure reduces context switching and makes refactoring trivial.
 
+## Headless UI
 But now we are seeing a new shift: Headless UI libraries. Radix UI, React Aria, and Headless UI provide the logic and accessibility (ARIA attributes, keyboard nav) without the styles. You bring your own Tailwind. This is the holy grail: fully accessible, complex components that look exactly how you want them to look, without fighting a framework's default styles.`,
     readTime: "8 MIN READ",
     tags: ["CSS", "TECH"]
@@ -95,7 +104,7 @@ But now we are seeing a new shift: Headless UI libraries. Radix UI, React Aria, 
     excerpt: "How to create asymmetric layouts that don't break responsive behavior. A guide to creative coding.",
     content: `The 12-column grid is a safety net. It guarantees that things align, but it also guarantees that things look predictable. To stand out, sometimes you have to break the grid.
 
-Techniques for controlled chaos:
+## Techniques for Chaos
 1. **CSS Grid with overlapping areas**: You can place items in the same grid cell or span them across tracks that overlap. Use z-index to manage the stacking order.
 2. **Translate Transforms**: Use \`transform: translate(x, y)\` to nudge elements off their natural axis. This is performant and doesn't affect the document flow of surrounding elements.
 3. **Negative Margins**: The old school way. Dangerous, but effective for pulling elements out of their containers.
@@ -107,25 +116,34 @@ The trick to responsive asymmetry is to revert to a standard stack on mobile. Ch
 ];
 
 // Config Management
-export const getMongoConfig = (): MongoConfig | null => {
+const CONFIG_KEY = 'neo_system_config';
+
+export const getSystemConfig = (): SystemConfig | null => {
   try {
-    const cfg = localStorage.getItem('neo_mongo_config');
+    const cfg = localStorage.getItem(CONFIG_KEY);
     return cfg ? JSON.parse(cfg) : null;
   } catch { return null; }
 };
 
-export const saveMongoConfig = (config: MongoConfig) => {
-  localStorage.setItem('neo_mongo_config', JSON.stringify(config));
+export const saveSystemConfig = (config: SystemConfig) => {
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
 };
 
-export const clearMongoConfig = () => {
-  localStorage.removeItem('neo_mongo_config');
+export const clearSystemConfig = () => {
+  localStorage.removeItem(CONFIG_KEY);
+};
+
+export const getGeminiKey = (): string => {
+  const config = getSystemConfig();
+  if (config?.geminiApiKey) return config.geminiApiKey;
+  // Fallback to env if available (development mode)
+  return typeof process !== 'undefined' && process.env && process.env.API_KEY ? process.env.API_KEY : '';
 };
 
 // API Helper
 const mongoFetch = async (action: string, collection: string, body: any = {}) => {
-  const config = getMongoConfig();
-  if (!config) throw new Error("No Mongo Configuration");
+  const config = getSystemConfig();
+  if (!config || !config.apiUrl) throw new Error("No Mongo Configuration");
 
   const response = await fetch(`${config.apiUrl}/action/${action}`, {
     method: 'POST',
@@ -150,13 +168,16 @@ const mongoFetch = async (action: string, collection: string, body: any = {}) =>
 export const DB = {
   // PROJECTS
   getProjects: async (): Promise<Project[]> => {
-    const config = getMongoConfig();
-    if (config) {
+    const config = getSystemConfig();
+    // Check if MongoDB is configured (requires URL and Key)
+    if (config && config.apiUrl && config.apiKey) {
       try {
         const res = await mongoFetch('find', 'projects', { sort: { id: 1 } });
         return res.documents ? res.documents : [];
       } catch (e) {
         console.error("Mongo Error", e);
+        // Fallback to local if fetch fails? Or just return empty/default. 
+        // Let's return defaults if fetch fails to keep site usable.
         return DEFAULT_PROJECTS;
       }
     } else {
@@ -166,8 +187,8 @@ export const DB = {
   },
 
   saveProject: async (project: Project) => {
-    const config = getMongoConfig();
-    if (config) {
+    const config = getSystemConfig();
+    if (config && config.apiUrl && config.apiKey) {
       // Check if exists to decide insert or update
       const existing = await mongoFetch('findOne', 'projects', { filter: { id: project.id } });
       
@@ -194,8 +215,8 @@ export const DB = {
   },
 
   deleteProject: async (id: number) => {
-    const config = getMongoConfig();
-    if (config) {
+    const config = getSystemConfig();
+    if (config && config.apiUrl && config.apiKey) {
       await mongoFetch('deleteOne', 'projects', { filter: { id: id } });
     } else {
       const projects = await DB.getProjects();
@@ -206,8 +227,8 @@ export const DB = {
 
   // POSTS
   getPosts: async (): Promise<BlogPost[]> => {
-    const config = getMongoConfig();
-    if (config) {
+    const config = getSystemConfig();
+    if (config && config.apiUrl && config.apiKey) {
       try {
         const res = await mongoFetch('find', 'posts', { sort: { id: -1 } });
         return res.documents ? res.documents : [];
@@ -222,8 +243,8 @@ export const DB = {
   },
 
   savePost: async (post: BlogPost) => {
-    const config = getMongoConfig();
-    if (config) {
+    const config = getSystemConfig();
+    if (config && config.apiUrl && config.apiKey) {
       const existing = await mongoFetch('findOne', 'posts', { filter: { id: post.id } });
       if (existing && existing.document) {
         await mongoFetch('updateOne', 'posts', {
@@ -247,8 +268,8 @@ export const DB = {
   },
 
   deletePost: async (id: number) => {
-    const config = getMongoConfig();
-    if (config) {
+    const config = getSystemConfig();
+    if (config && config.apiUrl && config.apiKey) {
       await mongoFetch('deleteOne', 'posts', { filter: { id: id } });
     } else {
       const posts = await DB.getPosts();

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ViewState, Project, BlogPost, MongoConfig } from '../types';
-import { Lock, Unlock, Trash2, Plus, Save, X, Code, FileText, LogOut, Database, Cloud, Server, AlertCircle } from 'lucide-react';
-import { DB, getMongoConfig, saveMongoConfig, clearMongoConfig } from '../lib/db';
+import { ViewState, Project, BlogPost, SystemConfig } from '../types';
+import { Lock, Unlock, Trash2, Plus, Save, X, Code, FileText, LogOut, Database, Cloud, Server, AlertCircle, Wand2, Cpu } from 'lucide-react';
+import { DB, getSystemConfig, saveSystemConfig, clearSystemConfig, getGeminiKey } from '../lib/db';
+import { GoogleGenAI } from "@google/genai";
 
 interface AdminPortalProps {
   setView: (view: ViewState) => void;
@@ -13,25 +14,27 @@ interface AdminPortalProps {
 const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, refreshData }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'PROJECTS' | 'BLOG' | 'DB'>('PROJECTS');
+  const [activeTab, setActiveTab] = useState<'PROJECTS' | 'BLOG' | 'SYSTEM'>('PROJECTS');
   const [error, setError] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Form States
   const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
   const [editingPost, setEditingPost] = useState<Partial<BlogPost> | null>(null);
 
-  // DB Config State
-  const [dbConfig, setDbConfig] = useState<MongoConfig>({
+  // System Config State
+  const [sysConfig, setSysConfig] = useState<SystemConfig>({
     apiUrl: '',
     apiKey: '',
     cluster: 'Cluster0',
-    database: 'portfolio'
+    database: 'portfolio',
+    geminiApiKey: ''
   });
 
   useEffect(() => {
-    const cfg = getMongoConfig();
-    if (cfg) setDbConfig(cfg);
+    const cfg = getSystemConfig();
+    if (cfg) setSysConfig(cfg);
   }, []);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -91,19 +94,49 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
     setTimeout(() => setStatusMsg(''), 3000);
   };
 
-  const saveDbConfig = () => {
-    saveMongoConfig(dbConfig);
-    setStatusMsg('DB CONNECTION UPDATED. REFRESHING...');
+  const saveSysConfig = () => {
+    saveSystemConfig(sysConfig);
+    setStatusMsg('SYSTEM CONFIG UPDATED. REFRESHING...');
     setTimeout(() => {
-        refreshData().then(() => setStatusMsg('CONNECTED TO CLOUD'));
+        refreshData().then(() => setStatusMsg('CONNECTED TO SERVICES'));
     }, 1000);
   };
 
-  const disconnectDb = () => {
-    clearMongoConfig();
-    setDbConfig({ apiUrl: '', apiKey: '', cluster: '', database: '' });
+  const disconnectSys = () => {
+    clearSystemConfig();
+    setSysConfig({ apiUrl: '', apiKey: '', cluster: '', database: '', geminiApiKey: '' });
     refreshData();
     setStatusMsg('DISCONNECTED. REVERTED TO LOCAL STORAGE.');
+  };
+
+  const generatePostContent = async () => {
+    const key = getGeminiKey();
+    if (!editingPost?.title) {
+        alert("TITLE REQUIRED");
+        return;
+    }
+    if (!key) {
+        alert("AI KEY MISSING. CONFIGURE IN 'SYSTEM' TAB.");
+        return;
+    }
+    
+    setIsGenerating(true);
+    try {
+        const ai = new GoogleGenAI({ apiKey: key });
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Write a raw, opinionated, neobrutalist-style technical blog post about: "${editingPost.title}". 
+            Keep sentences short. Use Markdown. Format: Introduction, Key Points (use bullet points), Conclusion.
+            Use ## for Headers. Use ** for bold.`,
+        });
+        
+        setEditingPost(prev => ({ ...prev, content: response.text }));
+    } catch (e) {
+        alert("AI GENERATION FAILED. CHECK API KEY.");
+        console.error(e);
+    } finally {
+        setIsGenerating(false);
+    }
   };
 
   if (!isAuthenticated) {
@@ -177,10 +210,10 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
             <FileText /> BLOG ({posts.length})
           </button>
           <button 
-            onClick={() => setActiveTab('DB')}
-            className={`flex items-center gap-2 px-6 py-3 font-bold border-4 border-black shadow-neo transition-all whitespace-nowrap ${activeTab === 'DB' ? 'bg-neo-secondary text-black translate-x-[2px] translate-y-[2px] shadow-none' : 'bg-white text-black hover:bg-gray-50'}`}
+            onClick={() => setActiveTab('SYSTEM')}
+            className={`flex items-center gap-2 px-6 py-3 font-bold border-4 border-black shadow-neo transition-all whitespace-nowrap ${activeTab === 'SYSTEM' ? 'bg-neo-secondary text-black translate-x-[2px] translate-y-[2px] shadow-none' : 'bg-white text-black hover:bg-gray-50'}`}
           >
-            <Database /> DATABASE
+            <Server /> SYSTEM
           </button>
         </div>
 
@@ -340,12 +373,21 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                          />
                        </div>
                        <div className="space-y-2">
-                         <label className="font-bold text-sm text-black">FULL CONTENT</label>
+                         <div className="flex justify-between items-center">
+                            <label className="font-bold text-sm text-black">FULL CONTENT (MARKDOWN SUPPORTED)</label>
+                            <button 
+                                onClick={generatePostContent}
+                                disabled={isGenerating}
+                                className="text-xs bg-neo-secondary text-black px-2 py-1 font-bold hover:bg-black hover:text-white flex items-center gap-1 transition-colors"
+                            >
+                                <Wand2 size={12} /> {isGenerating ? 'GENERATING...' : 'AUTO-WRITE WITH AI'}
+                            </button>
+                         </div>
                          <textarea 
                            className="w-full bg-white border-2 border-black p-2 h-64 focus:ring-2 focus:ring-neo-accent focus:outline-none text-black placeholder-gray-400 font-mono"
                            value={editingPost.content || ''} 
                            onChange={e => setEditingPost({...editingPost, content: e.target.value})}
-                           placeholder="Write your full article here..."
+                           placeholder="Write your full article here... Use **bold**, ## Headers, - Lists"
                          />
                        </div>
                        <div className="space-y-2">
@@ -388,80 +430,97 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
             </div>
           )}
 
-          {/* DATABASE TAB */}
-          {activeTab === 'DB' && (
+          {/* SYSTEM TAB */}
+          {activeTab === 'SYSTEM' && (
             <div className="animate-in slide-in-from-right-4">
                  <div className="flex justify-between items-center mb-6 border-b-4 border-gray-200 pb-4">
                     <div className="flex items-center gap-3">
                         <Server className="text-neo-secondary w-8 h-8 fill-current" />
-                        <h2 className="text-3xl font-black uppercase text-black">CLOUD SYNC</h2>
+                        <h2 className="text-3xl font-black uppercase text-black">SYSTEM CONFIG</h2>
                     </div>
                  </div>
 
                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div className="space-y-6">
-                        <div className="bg-blue-50 border-l-8 border-blue-500 p-4">
-                            <h4 className="font-bold flex items-center gap-2 text-blue-700"><AlertCircle size={20}/> INSTRUCTIONS</h4>
+                        {/* AI Config */}
+                        <div className="bg-purple-50 border-l-8 border-purple-500 p-4">
+                            <h4 className="font-bold flex items-center gap-2 text-purple-700"><Cpu size={20}/> AI NEURAL LINK</h4>
                             <p className="text-sm mt-2 leading-relaxed text-gray-800">
-                                To enable cloud storage, create a <a href="https://www.mongodb.com/atlas/database" target="_blank" className="underline font-bold">MongoDB Atlas</a> account. 
-                                Enable the <strong>Data API</strong> in your dashboard and generate an API Key.
+                                Required for Chat Terminal and Auto-Writing. Get a key from <a href="https://aistudio.google.com" target="_blank" className="underline font-bold">Google AI Studio</a>.
                             </p>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <label className="font-bold text-sm text-black">DATA API ENDPOINT URL</label>
-                                <input 
-                                    className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
-                                    placeholder="https://..."
-                                    value={dbConfig.apiUrl}
-                                    onChange={(e) => setDbConfig({...dbConfig, apiUrl: e.target.value})}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="font-bold text-sm text-black">API KEY</label>
+                            <div className="mt-4 space-y-2">
+                                <label className="font-bold text-sm text-black">GEMINI API KEY</label>
                                 <input 
                                     type="password"
-                                    className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
-                                    placeholder="Secret Key..."
-                                    value={dbConfig.apiKey}
-                                    onChange={(e) => setDbConfig({...dbConfig, apiKey: e.target.value})}
+                                    className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none text-black placeholder-gray-400"
+                                    placeholder="AIzaSy..."
+                                    value={sysConfig.geminiApiKey || ''}
+                                    onChange={(e) => setSysConfig({...sysConfig, geminiApiKey: e.target.value})}
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                        </div>
+
+                        {/* Database Config */}
+                        <div className="bg-blue-50 border-l-8 border-blue-500 p-4">
+                            <h4 className="font-bold flex items-center gap-2 text-blue-700"><Database size={20}/> CLOUD STORAGE</h4>
+                            <p className="text-sm mt-2 leading-relaxed text-gray-800">
+                                MongoDB Atlas Data API Configuration.
+                            </p>
+                            <div className="mt-4 space-y-4">
                                 <div className="space-y-2">
-                                    <label className="font-bold text-sm text-black">CLUSTER NAME</label>
+                                    <label className="font-bold text-sm text-black">DATA API URL</label>
                                     <input 
                                         className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
-                                        placeholder="Cluster0"
-                                        value={dbConfig.cluster}
-                                        onChange={(e) => setDbConfig({...dbConfig, cluster: e.target.value})}
+                                        placeholder="https://..."
+                                        value={sysConfig.apiUrl}
+                                        onChange={(e) => setSysConfig({...sysConfig, apiUrl: e.target.value})}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="font-bold text-sm text-black">DATABASE NAME</label>
+                                    <label className="font-bold text-sm text-black">DB API KEY</label>
                                     <input 
+                                        type="password"
                                         className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
-                                        placeholder="portfolio"
-                                        value={dbConfig.database}
-                                        onChange={(e) => setDbConfig({...dbConfig, database: e.target.value})}
+                                        placeholder="Secret Key..."
+                                        value={sysConfig.apiKey}
+                                        onChange={(e) => setSysConfig({...sysConfig, apiKey: e.target.value})}
                                     />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="font-bold text-sm text-black">CLUSTER</label>
+                                        <input 
+                                            className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
+                                            placeholder="Cluster0"
+                                            value={sysConfig.cluster}
+                                            onChange={(e) => setSysConfig({...sysConfig, cluster: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="font-bold text-sm text-black">DATABASE</label>
+                                        <input 
+                                            className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
+                                            placeholder="portfolio"
+                                            value={sysConfig.database}
+                                            onChange={(e) => setSysConfig({...sysConfig, database: e.target.value})}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <div className="flex gap-4 pt-4">
                             <button 
-                                onClick={saveDbConfig}
+                                onClick={saveSysConfig}
                                 className="flex-1 bg-neo-black text-white border-4 border-transparent hover:border-black hover:bg-neo-secondary hover:text-black p-4 font-bold transition-all flex justify-center items-center gap-2 shadow-neo"
                             >
-                                <Cloud /> CONNECT CLOUD
+                                <Cloud /> SAVE SYSTEM CONFIG
                             </button>
-                            {getMongoConfig() && (
+                            {getSystemConfig() && (
                                 <button 
-                                    onClick={disconnectDb}
+                                    onClick={disconnectSys}
                                     className="px-6 border-4 border-black hover:bg-red-500 hover:text-white font-bold transition-all text-black"
-                                    title="Revert to LocalStorage"
+                                    title="Reset Config"
                                 >
                                     <LogOut />
                                 </button>
@@ -470,25 +529,23 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                     </div>
 
                     <div className="bg-neo-black text-green-400 p-6 font-mono text-sm overflow-hidden relative">
-                        <div className="absolute top-0 right-0 p-2 opacity-50"><Database size={100} /></div>
-                        <h3 className="text-white font-bold mb-4 border-b border-gray-700 pb-2">CONNECTION STATUS</h3>
+                        <div className="absolute top-0 right-0 p-2 opacity-50"><Server size={100} /></div>
+                        <h3 className="text-white font-bold mb-4 border-b border-gray-700 pb-2">SYSTEM DIAGNOSTICS</h3>
                         <div className="space-y-2">
                             <p>
-                                <span className="text-gray-500">DRIVER:</span>{' '}
-                                {getMongoConfig() ? 'MONGO_ATLAS_DATA_API' : 'LOCAL_STORAGE_EMULATOR'}
+                                <span className="text-gray-500">STORAGE:</span>{' '}
+                                {sysConfig.apiUrl ? 'CLOUD_MONGO' : 'LOCAL_BROWSER'}
                             </p>
                             <p>
-                                <span className="text-gray-500">STATUS:</span>{' '}
-                                {getMongoConfig() ? <span className="text-neo-secondary animate-pulse">ONLINE</span> : <span className="text-yellow-400">OFFLINE (LOCAL)</span>}
-                            </p>
-                            <p>
-                                <span className="text-gray-500">COLLECTIONS:</span> projects, posts
+                                <span className="text-gray-500">AI MODULE:</span>{' '}
+                                {sysConfig.geminiApiKey ? <span className="text-neo-secondary">ACTIVE</span> : <span className="text-red-500">DISABLED</span>}
                             </p>
                             <div className="mt-8 p-4 border border-green-900 bg-black bg-opacity-50">
-                                <p className="text-xs text-gray-500 mb-2">// SYSTEM LOG</p>
-                                <p>> Initializing interface...</p>
-                                <p>> Checking persistence layer...</p>
-                                <p>> {getMongoConfig() ? `Connected to ${dbConfig.cluster}` : 'Using browser local storage'}</p>
+                                <p className="text-xs text-gray-500 mb-2">// CONSOLE_OUTPUT</p>
+                                <p>> System init...</p>
+                                <p>> Storage driver: {sysConfig.apiUrl ? 'Atlas' : 'LocalStorage'}</p>
+                                <p>> AI Key check: {sysConfig.geminiApiKey ? 'Pass' : 'Fail'}</p>
+                                <p>> Ready.</p>
                             </div>
                         </div>
                     </div>

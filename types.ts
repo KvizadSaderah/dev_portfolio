@@ -18,11 +18,20 @@ export interface BlogPost {
   tags: string[];
 }
 
-export interface MongoConfig {
+export interface SystemConfig {
+  // MongoDB Config
   apiUrl: string;
   apiKey: string;
   cluster: string;
   database: string;
+  
+  // AI Config
+  geminiApiKey?: string;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;
 }
 
 export type ViewState = 'HOME' | 'PROJECTS' | 'BLOG' | 'ADMIN';

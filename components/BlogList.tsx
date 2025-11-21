@@ -6,6 +6,56 @@ interface BlogListProps {
   posts: BlogPost[];
 }
 
+// Custom Markdown Renderer for Neobrutalist styling
+const MarkdownContent: React.FC<{ content: string }> = ({ content }) => {
+  if (!content) return <p>No content.</p>;
+
+  // Split by double newlines for paragraphs
+  const blocks = content.split(/\n\n+/);
+
+  return (
+    <div className="space-y-6 font-mono text-gray-700">
+      {blocks.map((block, idx) => {
+        // Header 2
+        if (block.startsWith('## ')) {
+           return <h3 key={idx} className="text-2xl font-black text-black mt-8 mb-4 border-b-4 border-neo-secondary inline-block pr-4">{block.replace('## ', '')}</h3>;
+        }
+        // Header 1 (treated as H2 for post body)
+        if (block.startsWith('# ')) {
+           return <h3 key={idx} className="text-3xl font-black text-black mt-8 mb-4">{block.replace('# ', '')}</h3>;
+        }
+        // List
+        if (block.startsWith('- ')) {
+           const items = block.split('\n').filter(line => line.startsWith('- '));
+           return (
+             <ul key={idx} className="list-disc list-inside space-y-2 ml-4 bg-gray-100 p-4 border-l-4 border-neo-black">
+               {items.map((item, i) => (
+                 <li key={i} className="font-bold">
+                   {parseInline(item.replace('- ', ''))}
+                 </li>
+               ))}
+             </ul>
+           );
+        }
+
+        // Standard Paragraph
+        return <p key={idx} className="text-lg leading-loose">{parseInline(block)}</p>;
+      })}
+    </div>
+  );
+};
+
+// Helper to parse bold text
+const parseInline = (text: string) => {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="bg-neo-secondary text-black px-1 border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+};
+
 const BlogList: React.FC<BlogListProps> = ({ posts }) => {
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
@@ -60,8 +110,8 @@ const BlogList: React.FC<BlogListProps> = ({ posts }) => {
 
                 {/* Expanded Content */}
                 <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isExpanded ? 'max-h-[2000px] opacity-100 mb-8' : 'max-h-0 opacity-0'}`}>
-                   <div className="border-t-4 border-dashed border-gray-300 pt-8 text-lg leading-loose whitespace-pre-wrap font-mono text-gray-700">
-                     {post.content || "No content available for this post."}
+                   <div className="border-t-4 border-dashed border-gray-300 pt-8">
+                     <MarkdownContent content={post.content || "No content available for this post."} />
                    </div>
                 </div>
 
