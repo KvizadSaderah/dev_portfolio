@@ -6,6 +6,7 @@ import BlogList from './components/BlogList';
 import Footer from './components/Footer';
 import Marquee from './components/Marquee';
 import AdminPortal from './components/AdminPortal';
+import AITerminal from './components/AITerminal';
 import { ViewState, Project, BlogPost } from './types';
 import { DB } from './lib/db';
 
@@ -61,7 +62,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-neo-bg text-neo-black font-mono selection:bg-neo-pink selection:text-white overflow-x-hidden">
+    <div className="min-h-screen bg-neo-bg text-neo-black font-mono selection:bg-neo-pink selection:text-white overflow-x-hidden relative">
       <Marquee text="AVAILABLE FOR FREELANCE // BUILDING THE FUTURE // TYPESCRIPT WIZARD // REACT ENTHUSIAST // " speed={20} />
       
       <Navbar currentView={view} setView={setView} />
@@ -77,7 +78,7 @@ const App: React.FC = () => {
       <Footer setView={setView} />
       
       {/* Floating Action Button for Contact (Mobile) */}
-      <div className="fixed bottom-8 right-8 md:hidden z-50">
+      <div className="fixed bottom-8 left-8 md:hidden z-40">
         <button 
           className="bg-neo-primary p-4 border-4 border-neo-black shadow-neo active:shadow-neo-hover active:translate-x-[3px] active:translate-y-[3px] transition-all rounded-none"
           onClick={() => window.open('mailto:hello@example.com')}
@@ -85,6 +86,9 @@ const App: React.FC = () => {
            <span className="font-bold text-xl">@</span>
         </button>
       </div>
+
+      {/* AI TERMINAL - Passing data for context */}
+      <AITerminal projects={projects} posts={posts} />
     </div>
   );
 };
