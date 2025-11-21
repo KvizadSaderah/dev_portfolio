@@ -11,14 +11,18 @@ interface AITerminalProps {
 
 const AITerminal: React.FC<AITerminalProps> = ({ projects, posts }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const API_KEY = getGeminiKey();
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'model', text: 'NEO_MIND V1.0 ONLINE. ASK ME ABOUT THE DEVELOPER OR THE PROJECTS.' }
+    {
+      role: 'model',
+      text: API_KEY
+        ? 'NEO_MIND V1.0 ONLINE. ASK ME ABOUT THE DEVELOPER OR THE PROJECTS.'
+        : '⚠️ AI OFFLINE: API key not configured.\n\nTo enable AI:\n1. Set GEMINI_API_KEY in Vercel environment variables (recommended)\n2. Or add via Admin Portal → System tab\n\nAfter adding env var, redeploy your app.'
+    }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  const API_KEY = getGeminiKey(); 
+  const messagesEndRef = useRef<HTMLDivElement>(null); 
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -86,19 +90,25 @@ const AITerminal: React.FC<AITerminalProps> = ({ projects, posts }) => {
     }
   };
 
-  if (!API_KEY) {
-      return null; 
-  }
-
   return (
     <div className="fixed bottom-6 right-6 z-50 font-mono">
       {!isOpen && (
-        <button 
+        <button
           onClick={() => setIsOpen(true)}
-          className="bg-neo-black text-neo-secondary w-16 h-16 border-4 border-neo-secondary shadow-neo hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all flex items-center justify-center group"
+          className={`w-16 h-16 border-4 shadow-neo hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all flex items-center justify-center group relative ${
+            API_KEY
+              ? 'bg-neo-black text-neo-secondary border-neo-secondary'
+              : 'bg-gray-700 text-gray-400 border-gray-500'
+          }`}
+          title={API_KEY ? 'Open AI Assistant' : 'AI Assistant (API key required)'}
         >
           <Terminal size={32} className="group-hover:scale-110 transition-transform" />
-          <span className="absolute -top-2 -right-2 w-4 h-4 bg-neo-primary border-2 border-black animate-pulse"></span>
+          {API_KEY && (
+            <span className="absolute -top-2 -right-2 w-4 h-4 bg-neo-primary border-2 border-black animate-pulse"></span>
+          )}
+          {!API_KEY && (
+            <span className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 border-2 border-black"></span>
+          )}
         </button>
       )}
 
@@ -123,7 +133,7 @@ const AITerminal: React.FC<AITerminalProps> = ({ projects, posts }) => {
                          ? 'bg-white border-white text-black' 
                          : 'bg-black border-neo-secondary text-neo-secondary shadow-[4px_4px_0px_0px_#333]'
                      }`}>
-                         <p className="text-sm font-bold leading-relaxed">
+                         <p className="text-sm font-bold leading-relaxed whitespace-pre-line">
                              {msg.role === 'model' && <span className="mr-2 text-neo-primary">&gt;&gt;</span>}
                              {msg.text}
                              {msg.role === 'model' && idx === messages.length - 1 && isTyping && <span className="animate-pulse">_</span>}
@@ -136,16 +146,19 @@ const AITerminal: React.FC<AITerminalProps> = ({ projects, posts }) => {
 
           {/* Input Area */}
           <form onSubmit={handleSend} className="p-3 bg-gray-900 border-t-4 border-neo-secondary flex gap-2">
-            <input 
+            <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="ENTER COMMAND..."
-              className="flex-1 bg-transparent text-white font-bold focus:outline-none placeholder-gray-600"
+              placeholder={API_KEY ? "ENTER COMMAND..." : "API KEY REQUIRED..."}
+              disabled={!API_KEY}
+              className="flex-1 bg-transparent text-white font-bold focus:outline-none placeholder-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               autoFocus
             />
-            <button 
-              disabled={isTyping}
-              className="text-neo-secondary hover:text-white disabled:opacity-50"
+            <button
+              type="submit"
+              disabled={isTyping || !API_KEY}
+              className="text-neo-secondary hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              title={!API_KEY ? 'Configure API key first' : 'Send message'}
             >
                 <Send size={24} />
             </button>
