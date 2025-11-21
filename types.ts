@@ -13,6 +13,7 @@ export interface BlogPost {
   title: string;
   date: string;
   excerpt: string;
+  content?: string; // Full article content
   readTime: string;
   tags: string[];
 }
