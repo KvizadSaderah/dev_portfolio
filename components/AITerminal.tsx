@@ -124,7 +124,7 @@ const AITerminal: React.FC<AITerminalProps> = ({ projects, posts }) => {
                          : 'bg-black border-neo-secondary text-neo-secondary shadow-[4px_4px_0px_0px_#333]'
                      }`}>
                          <p className="text-sm font-bold leading-relaxed">
-                             {msg.role === 'model' && <span className="mr-2 text-neo-primary">>></span>}
+                             {msg.role === 'model' && <span className="mr-2 text-neo-primary">&gt;&gt;</span>}
                              {msg.text}
                              {msg.role === 'model' && idx === messages.length - 1 && isTyping && <span className="animate-pulse">_</span>}
                          </p>
