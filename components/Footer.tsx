@@ -1,10 +1,20 @@
 import React from 'react';
-import { Github, Twitter, Linkedin, Mail } from 'lucide-react';
+import { Github, Twitter, Linkedin, Mail, Lock } from 'lucide-react';
+import { ViewState } from '../types';
 
-const Footer: React.FC = () => {
+interface FooterProps {
+  setView?: (view: ViewState) => void;
+}
+
+const Footer: React.FC<FooterProps> = ({ setView }) => {
   return (
-    <footer className="bg-neo-black text-neo-bg border-t-4 border-neo-black pt-16 pb-8">
-      <div className="container mx-auto px-8">
+    <footer className="bg-neo-black text-neo-bg border-t-4 border-neo-black pt-16 pb-8 relative overflow-hidden">
+      {/* Abstract Grid Background */}
+      <div className="absolute inset-0 opacity-5 pointer-events-none" 
+           style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+      </div>
+
+      <div className="container mx-auto px-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
           
           <div>
@@ -36,7 +46,18 @@ const Footer: React.FC = () => {
 
         <div className="flex flex-col md:flex-row justify-between items-center border-t-2 border-gray-800 pt-8 font-mono text-sm text-gray-400">
           <p>&copy; {new Date().getFullYear()} NEO_DEV. ALL RIGHTS RESERVED.</p>
-          <p className="mt-2 md:mt-0">BUILT WITH REACT + TAILWIND</p>
+          <div className="flex items-center gap-4 mt-4 md:mt-0">
+            <p>BUILT WITH REACT + TAILWIND</p>
+            {setView && (
+              <button 
+                onClick={() => setView('ADMIN')} 
+                className="p-2 hover:bg-white hover:text-black transition-colors rounded-sm group"
+                title="System Login"
+              >
+                <Lock size={14} className="group-hover:scale-110 transition-transform" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </footer>
