@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ViewState, Project, BlogPost } from '../types';
-import { Lock, Trash2, Plus, Save, X, Code, FileText, LogOut, Database, AlertCircle, Wand2, Cpu, CheckCircle, XCircle } from 'lucide-react';
+import { Lock, Trash2, Plus, Save, X, Code, FileText, LogOut, Database, AlertCircle, Wand2, Cpu, CheckCircle, XCircle, ShieldCheck } from 'lucide-react';
 import { DB, getGeminiKey, getAdminPassword } from '../lib/db';
 import { GoogleGenAI } from "@google/genai";
 
