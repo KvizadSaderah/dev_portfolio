@@ -579,10 +579,10 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                             </p>
                             <div className="mt-8 p-4 border border-green-900 bg-black bg-opacity-50">
                                 <p className="text-xs text-gray-500 mb-2">// CONSOLE_OUTPUT</p>
-                                <p>> System init...</p>
-                                <p>> Verifying keys...</p>
-                                <p>> {sysConfig.apiKey ? 'Keys Encrypted: YES' : 'Keys Encrypted: NO'}</p>
-                                <p>> Ready.</p>
+                                <p>&gt; System init...</p>
+                                <p>&gt; Verifying keys...</p>
+                                <p>&gt; {sysConfig.apiKey ? 'Keys Encrypted: YES' : 'Keys Encrypted: NO'}</p>
+                                <p>&gt; Ready.</p>
                             </div>
                         </div>
                     </div>
