@@ -18,17 +18,6 @@ export interface BlogPost {
   tags: string[];
 }
 
-export interface SystemConfig {
-  // MongoDB Config
-  apiUrl: string;
-  apiKey: string;
-  cluster: string;
-  database: string;
-  
-  // AI Config
-  geminiApiKey?: string;
-}
-
 export interface ChatMessage {
   role: 'user' | 'model';
   text: string;

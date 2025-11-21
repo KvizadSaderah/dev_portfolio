@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { ViewState, Project, BlogPost, SystemConfig } from '../types';
-import { Lock, Unlock, Trash2, Plus, Save, X, Code, FileText, LogOut, Database, Cloud, Server, AlertCircle, Wand2, Cpu, ShieldCheck } from 'lucide-react';
-import { DB, getSystemConfig, saveSystemConfig, clearSystemConfig, getGeminiKey, setDbAccessKey } from '../lib/db';
+import React, { useState } from 'react';
+import { ViewState, Project, BlogPost } from '../types';
+import { Lock, Trash2, Plus, Save, X, Code, FileText, LogOut, Database, AlertCircle, Wand2, Cpu, CheckCircle, XCircle } from 'lucide-react';
+import { DB, getGeminiKey, getAdminPassword } from '../lib/db';
 import { GoogleGenAI } from "@google/genai";
 
 interface AdminPortalProps {
@@ -14,7 +14,7 @@ interface AdminPortalProps {
 const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, refreshData }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'PROJECTS' | 'BLOG' | 'SYSTEM'>('PROJECTS');
+  const [activeTab, setActiveTab] = useState<'PROJECTS' | 'BLOG'>('PROJECTS');
   const [error, setError] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -23,52 +23,25 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
   const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
   const [editingPost, setEditingPost] = useState<Partial<BlogPost> | null>(null);
 
-  // System Config State
-  const [sysConfig, setSysConfig] = useState<SystemConfig>({
-    apiUrl: '',
-    apiKey: '',
-    cluster: 'Cluster0',
-    database: 'portfolio',
-    geminiApiKey: ''
-  });
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      const cfg = getSystemConfig();
-      if (cfg) setSysConfig(cfg);
-    }
-  }, [isAuthenticated]);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // 1. Set the session key for decryption
-    setDbAccessKey(password);
-    
-    // 2. Check if we have stored config
-    const storedConfigRaw = localStorage.getItem('neo_system_config');
-    
-    if (storedConfigRaw && storedConfigRaw.startsWith('ENC:')) {
-        // 3. Attempt to decrypt
-        const cfg = getSystemConfig();
-        if (cfg) {
-            // Success
-            setIsAuthenticated(true);
-            setError('');
-            await refreshData(); // Refresh with new credentials
-        } else {
-            // Decryption failed
-            setError('DECRYPTION FAILED. WRONG PASSWORD.');
-            setDbAccessKey(''); // Clear invalid key
-        }
+
+    const correctPassword = getAdminPassword();
+
+    // If no password configured in environment, deny access
+    if (!correctPassword) {
+      setError('ADMIN_PASSWORD not configured. Set it in Vercel environment variables.');
+      return;
+    }
+
+    // Check if password matches
+    if (password === correctPassword) {
+      setIsAuthenticated(true);
+      setError('');
+      await refreshData();
     } else {
-        // First time setup or plain text legacy (which we accept)
-        if (password) {
-            setIsAuthenticated(true);
-            setError('');
-        } else {
-             setError('PASSWORD REQUIRED FOR SECURE SESSION');
-        }
+      setError('INCORRECT PASSWORD. ACCESS DENIED.');
+      setPassword('');
     }
   };
 
@@ -118,44 +91,29 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
     setTimeout(() => setStatusMsg(''), 3000);
   };
 
-  const saveSysConfig = () => {
-    saveSystemConfig(sysConfig);
-    setStatusMsg('SYSTEM ENCRYPTED & SAVED.');
-    setTimeout(() => {
-        refreshData().then(() => setStatusMsg('CONNECTED TO SERVICES'));
-    }, 1000);
-  };
-
-  const disconnectSys = () => {
-    if(confirm('WIPE CONFIGURATION? THIS WILL REMOVE ENCRYPTED KEYS FROM THIS BROWSER.')) {
-        clearSystemConfig();
-        setSysConfig({ apiUrl: '', apiKey: '', cluster: '', database: '', geminiApiKey: '' });
-        refreshData();
-        setStatusMsg('DISCONNECTED. REVERTED TO LOCAL STORAGE.');
-    }
-  };
-
   const generatePostContent = async () => {
     const key = getGeminiKey();
+
     if (!editingPost?.title) {
         alert("TITLE REQUIRED");
         return;
     }
+
     if (!key) {
-        alert("AI KEY MISSING. CONFIGURE IN 'SYSTEM' TAB.");
+        alert("AI KEY MISSING. Set GEMINI_API_KEY in Vercel environment variables.");
         return;
     }
-    
+
     setIsGenerating(true);
     try {
         const ai = new GoogleGenAI({ apiKey: key });
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
-            contents: `Write a raw, opinionated, neobrutalist-style technical blog post about: "${editingPost.title}". 
+            contents: `Write a raw, opinionated, neobrutalist-style technical blog post about: "${editingPost.title}".
             Keep sentences short. Use Markdown. Format: Introduction, Key Points (use bullet points), Conclusion.
             Use ## for Headers. Use ** for bold.`,
         });
-        
+
         setEditingPost(prev => ({ ...prev, content: response.text }));
     } catch (e) {
         alert("AI GENERATION FAILED. CHECK API KEY.");
@@ -172,13 +130,13 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
           <div className="flex justify-center mb-6 text-neo-primary animate-pulse">
             <Lock size={64} />
           </div>
-          <h2 className="text-3xl font-black text-center mb-2 text-black">SECURE LOGIN</h2>
+          <h2 className="text-3xl font-black text-center mb-2 text-black">ADMIN ACCESS</h2>
           <p className="text-center text-gray-500 mb-8 text-sm">
-            ENTER DECRYPTION PASSWORD
+            Enter admin password
             <br/>
-            <span className="text-xs text-gray-400">(Any password creates a new session if none exists)</span>
+            <span className="text-xs text-gray-400">(Set ADMIN_PASSWORD in Vercel environment)</span>
           </p>
-          
+
           <form onSubmit={handleLogin} className="space-y-4">
             <input
               type="password"
@@ -188,27 +146,9 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
               placeholder="PASSWORD..."
               autoFocus
             />
-            {error && (
-              <>
-                <p className="text-red-600 font-bold text-sm bg-red-100 p-2 border-l-4 border-red-600">{error}</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm('⚠️ WARNING: This will DELETE all encrypted admin settings and API keys from localStorage.\n\nYou will lose:\n- Saved API keys\n- MongoDB configuration\n- All encrypted admin data\n\nContinue?')) {
-                      localStorage.removeItem('neo_system_config');
-                      setError('');
-                      alert('✅ Admin data cleared! You can now login with any new password.');
-                      window.location.reload();
-                    }
-                  }}
-                  className="w-full text-xs text-red-600 hover:text-red-800 hover:bg-red-50 underline py-2 mt-2 border-2 border-red-200"
-                >
-                  🔓 Forgot password? Reset all admin data
-                </button>
-              </>
-            )}
+            {error && <p className="text-red-600 font-bold text-sm bg-red-100 p-2 border-l-4 border-red-600">{error}</p>}
             <button className="w-full bg-neo-black text-white font-bold py-4 border-4 border-transparent hover:bg-neo-primary hover:text-black hover:border-black transition-all shadow-neo">
-              DECRYPT & ACCESS
+              ACCESS ADMIN
             </button>
           </form>
           <button onClick={() => setView('HOME')} className="w-full mt-4 text-gray-400 hover:text-black font-bold text-sm">
@@ -236,7 +176,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
             <button onClick={() => setView('HOME')} className="bg-neo-bg text-black font-bold px-4 py-2 hover:bg-neo-primary border-2 border-transparent hover:border-black">
                VIEW SITE
             </button>
-            <button onClick={() => { setIsAuthenticated(false); setDbAccessKey(''); }} className="text-red-500 hover:text-white hover:bg-red-500 px-3 py-2">
+            <button onClick={() => setIsAuthenticated(false)} className="text-red-500 hover:text-white hover:bg-red-500 px-3 py-2">
                <LogOut size={20} />
             </button>
         </div>
@@ -245,24 +185,41 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
       <div className="max-w-7xl mx-auto">
         {/* Tabs */}
         <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
-          <button 
+          <button
             onClick={() => setActiveTab('PROJECTS')}
             className={`flex items-center gap-2 px-6 py-3 font-bold border-4 border-black shadow-neo transition-all whitespace-nowrap ${activeTab === 'PROJECTS' ? 'bg-neo-primary text-black translate-x-[2px] translate-y-[2px] shadow-none' : 'bg-white text-black hover:bg-gray-50'}`}
           >
             <Code /> PROJECTS ({projects.length})
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('BLOG')}
             className={`flex items-center gap-2 px-6 py-3 font-bold border-4 border-black shadow-neo transition-all whitespace-nowrap ${activeTab === 'BLOG' ? 'bg-neo-accent text-black translate-x-[2px] translate-y-[2px] shadow-none' : 'bg-white text-black hover:bg-gray-50'}`}
           >
             <FileText /> BLOG ({posts.length})
           </button>
-          <button 
-            onClick={() => setActiveTab('SYSTEM')}
-            className={`flex items-center gap-2 px-6 py-3 font-bold border-4 border-black shadow-neo transition-all whitespace-nowrap ${activeTab === 'SYSTEM' ? 'bg-neo-secondary text-black translate-x-[2px] translate-y-[2px] shadow-none' : 'bg-white text-black hover:bg-gray-50'}`}
-          >
-            <Server /> SYSTEM
-          </button>
+        </div>
+
+        {/* System Status Bar */}
+        <div className="bg-neo-black text-white p-4 mb-6 border-4 border-neo-secondary flex flex-wrap gap-4 justify-between items-center">
+          <div className="flex items-center gap-2">
+            <Database size={20} />
+            <span className="font-bold text-sm">MONGODB:</span>
+            {/* We check if MongoDB is configured by trying to fetch - for now just show status */}
+            <span className="text-neo-secondary font-bold">ENV CONFIG</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Cpu size={20} />
+            <span className="font-bold text-sm">AI MODULE:</span>
+            {getGeminiKey() ? (
+              <span className="flex items-center gap-1 text-green-400 font-bold">
+                <CheckCircle size={16} /> ACTIVE
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-red-400 font-bold">
+                <XCircle size={16} /> DISABLED
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Content Area */}
@@ -475,136 +432,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                     ))}
                  </div>
                )}
-            </div>
-          )}
-
-          {/* SYSTEM TAB */}
-          {activeTab === 'SYSTEM' && (
-            <div className="animate-in slide-in-from-right-4">
-                 <div className="flex justify-between items-center mb-6 border-b-4 border-gray-200 pb-4">
-                    <div className="flex items-center gap-3">
-                        <Server className="text-neo-secondary w-8 h-8 fill-current" />
-                        <h2 className="text-3xl font-black uppercase text-black">SYSTEM CONFIG</h2>
-                    </div>
-                 </div>
-
-                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="space-y-6">
-                        <div className="bg-green-50 border-l-8 border-green-500 p-4 mb-6">
-                             <h4 className="font-bold flex items-center gap-2 text-green-700"><ShieldCheck size={20}/> ENCRYPTION ACTIVE</h4>
-                             <p className="text-sm mt-2 leading-relaxed text-gray-800">
-                                 All keys are encrypted with your password. They are never stored in plain text.
-                             </p>
-                        </div>
-
-                        {/* AI Config */}
-                        <div className="bg-purple-50 border-l-8 border-purple-500 p-4">
-                            <h4 className="font-bold flex items-center gap-2 text-purple-700"><Cpu size={20}/> AI NEURAL LINK</h4>
-                            <p className="text-sm mt-2 leading-relaxed text-gray-800">
-                                Required for Chat Terminal and Auto-Writing. Get a key from <a href="https://aistudio.google.com" target="_blank" className="underline font-bold">Google AI Studio</a>.
-                            </p>
-                            <div className="mt-4 space-y-2">
-                                <label className="font-bold text-sm text-black">GEMINI API KEY</label>
-                                <input 
-                                    type="password"
-                                    className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none text-black placeholder-gray-400"
-                                    placeholder="AIzaSy..."
-                                    value={sysConfig.geminiApiKey || ''}
-                                    onChange={(e) => setSysConfig({...sysConfig, geminiApiKey: e.target.value})}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Database Config */}
-                        <div className="bg-blue-50 border-l-8 border-blue-500 p-4">
-                            <h4 className="font-bold flex items-center gap-2 text-blue-700"><Database size={20}/> CLOUD STORAGE</h4>
-                            <p className="text-sm mt-2 leading-relaxed text-gray-800">
-                                MongoDB Atlas Data API Configuration.
-                            </p>
-                            <div className="mt-4 space-y-4">
-                                <div className="space-y-2">
-                                    <label className="font-bold text-sm text-black">DATA API URL</label>
-                                    <input 
-                                        className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
-                                        placeholder="https://..."
-                                        value={sysConfig.apiUrl}
-                                        onChange={(e) => setSysConfig({...sysConfig, apiUrl: e.target.value})}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="font-bold text-sm text-black">DB API KEY</label>
-                                    <input 
-                                        type="password"
-                                        className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
-                                        placeholder="Secret Key..."
-                                        value={sysConfig.apiKey}
-                                        onChange={(e) => setSysConfig({...sysConfig, apiKey: e.target.value})}
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="font-bold text-sm text-black">CLUSTER</label>
-                                        <input 
-                                            className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
-                                            placeholder="Cluster0"
-                                            value={sysConfig.cluster}
-                                            onChange={(e) => setSysConfig({...sysConfig, cluster: e.target.value})}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="font-bold text-sm text-black">DATABASE</label>
-                                        <input 
-                                            className="w-full bg-white border-2 border-black p-3 font-mono text-sm focus:ring-2 focus:ring-neo-secondary focus:outline-none text-black placeholder-gray-400"
-                                            placeholder="portfolio"
-                                            value={sysConfig.database}
-                                            onChange={(e) => setSysConfig({...sysConfig, database: e.target.value})}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 pt-4">
-                            <button 
-                                onClick={saveSysConfig}
-                                className="flex-1 bg-neo-black text-white border-4 border-transparent hover:border-black hover:bg-neo-secondary hover:text-black p-4 font-bold transition-all flex justify-center items-center gap-2 shadow-neo"
-                            >
-                                <Cloud /> SAVE & ENCRYPT
-                            </button>
-                            {getSystemConfig() && (
-                                <button 
-                                    onClick={disconnectSys}
-                                    className="px-6 border-4 border-black hover:bg-red-500 hover:text-white font-bold transition-all text-black"
-                                    title="Wipe Data"
-                                >
-                                    <LogOut />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="bg-neo-black text-green-400 p-6 font-mono text-sm overflow-hidden relative">
-                        <div className="absolute top-0 right-0 p-2 opacity-50"><Server size={100} /></div>
-                        <h3 className="text-white font-bold mb-4 border-b border-gray-700 pb-2">SYSTEM DIAGNOSTICS</h3>
-                        <div className="space-y-2">
-                            <p>
-                                <span className="text-gray-500">STORAGE:</span>{' '}
-                                {sysConfig.apiUrl ? 'CLOUD_MONGO' : 'LOCAL_BROWSER'}
-                            </p>
-                            <p>
-                                <span className="text-gray-500">AI MODULE:</span>{' '}
-                                {sysConfig.geminiApiKey ? <span className="text-neo-secondary">ACTIVE</span> : <span className="text-red-500">DISABLED</span>}
-                            </p>
-                            <div className="mt-8 p-4 border border-green-900 bg-black bg-opacity-50">
-                                <p className="text-xs text-gray-500 mb-2">// CONSOLE_OUTPUT</p>
-                                <p>&gt; System init...</p>
-                                <p>&gt; Verifying keys...</p>
-                                <p>&gt; {sysConfig.apiKey ? 'Keys Encrypted: YES' : 'Keys Encrypted: NO'}</p>
-                                <p>&gt; Ready.</p>
-                            </div>
-                        </div>
-                    </div>
-                 </div>
             </div>
           )}
 
