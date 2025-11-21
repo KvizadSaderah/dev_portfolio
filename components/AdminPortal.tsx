@@ -340,6 +340,15 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
                          />
                        </div>
                        <div className="space-y-2">
+                         <label className="font-bold text-sm text-black">FULL CONTENT</label>
+                         <textarea 
+                           className="w-full bg-white border-2 border-black p-2 h-64 focus:ring-2 focus:ring-neo-accent focus:outline-none text-black placeholder-gray-400 font-mono"
+                           value={editingPost.content || ''} 
+                           onChange={e => setEditingPost({...editingPost, content: e.target.value})}
+                           placeholder="Write your full article here..."
+                         />
+                       </div>
+                       <div className="space-y-2">
                          <label className="font-bold text-sm text-black">TAGS (comma separated)</label>
                          <input 
                            className="w-full bg-white border-2 border-black p-2 focus:ring-2 focus:ring-neo-accent focus:outline-none text-black placeholder-gray-400"
