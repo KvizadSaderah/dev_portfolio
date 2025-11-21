@@ -168,7 +168,19 @@ export const clearSystemConfig = () => {
 
 export const getGeminiKey = (): string => {
   // Priority 1: Environment variable (Vercel/build-time)
-  const envKey = typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY : '';
+  // Check both import.meta.env (Vite standard) and process.env (define)
+  let envKey = '';
+
+  // Try import.meta.env first (works with VITE_ prefix)
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    envKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY || '';
+  }
+
+  // Fallback to process.env (works with define in vite.config)
+  if (!envKey && typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+    envKey = process.env.GEMINI_API_KEY;
+  }
+
   if (envKey) return envKey;
 
   // Priority 2: Admin config (localStorage)
