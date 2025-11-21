@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ViewState, Project, BlogPost } from '../types';
 import { Lock, Trash2, Plus, Save, X, Code, FileText, LogOut, Database, AlertCircle, Wand2, Cpu, CheckCircle, XCircle, ShieldCheck } from 'lucide-react';
 import { DB, getGeminiKey, getAdminPassword } from '../lib/db';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Chat } from "@google/genai";
 
 interface AdminPortalProps {
   setView: (view: ViewState) => void;
@@ -107,14 +107,20 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ setView, projects, posts, ref
     setIsGenerating(true);
     try {
         const ai = new GoogleGenAI({ apiKey: key });
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: `Write a raw, opinionated, neobrutalist-style technical blog post about: "${editingPost.title}".
-            Keep sentences short. Use Markdown. Format: Introduction, Key Points (use bullet points), Conclusion.
-            Use ## for Headers. Use ** for bold.`,
+        const chat = ai.chats.create({
+            model: 'gemini-2.5-flash',
+            config: {
+                systemInstruction: `You are a technical content writer. Write raw, opinionated, neobrutalist-style technical blog posts.
+Keep sentences short. Use Markdown. Format: Introduction, Key Points (use bullet points), Conclusion.
+Use ## for Headers. Use ** for bold.`,
+            },
         });
 
-        setEditingPost(prev => ({ ...prev, content: response.text }));
+        const result = await chat.sendMessage({
+            message: `Write a blog post about: "${editingPost.title}"`
+        });
+
+        setEditingPost(prev => ({ ...prev, content: result.text }));
     } catch (e) {
         alert("AI GENERATION FAILED. CHECK API KEY.");
         console.error(e);
