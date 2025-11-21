@@ -17,4 +17,11 @@ export interface BlogPost {
   tags: string[];
 }
 
-export type ViewState = 'HOME' | 'PROJECTS' | 'BLOG';
+export interface MongoConfig {
+  apiUrl: string;
+  apiKey: string;
+  cluster: string;
+  database: string;
+}
+
+export type ViewState = 'HOME' | 'PROJECTS' | 'BLOG' | 'ADMIN';

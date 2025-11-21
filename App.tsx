@@ -5,17 +5,33 @@ import ProjectList from './components/ProjectList';
 import BlogList from './components/BlogList';
 import Footer from './components/Footer';
 import Marquee from './components/Marquee';
-import { ViewState } from './types';
-import { Menu, X } from 'lucide-react';
+import AdminPortal from './components/AdminPortal';
+import { ViewState, Project, BlogPost } from './types';
+import { DB } from './lib/db';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('HOME');
   const [isLoading, setIsLoading] = useState(true);
+  
+  // State
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
 
-  // Simulate a raw loading screen
+  // Data Fetching
+  const refreshData = async () => {
+    const p = await DB.getProjects();
+    const b = await DB.getPosts();
+    setProjects(p);
+    setPosts(b);
+  };
+
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1800);
-    return () => clearTimeout(timer);
+    const init = async () => {
+      await refreshData();
+      // Simulate loading for effect
+      setTimeout(() => setIsLoading(false), 1500);
+    };
+    init();
   }, []);
 
   if (isLoading) {
@@ -27,8 +43,20 @@ const App: React.FC = () => {
         <div className="mt-8 border-2 border-neo-secondary w-64 h-8 p-1">
           <div className="h-full bg-neo-secondary w-full animate-[width_1.5s_ease-in-out]"></div>
         </div>
-        <p className="mt-4 text-sm">INITIALIZING SYSTEM CORE</p>
+        <p className="mt-4 text-sm">CONNECTING TO NEURAL NET</p>
       </div>
+    );
+  }
+
+  // Admin View Rendering
+  if (view === 'ADMIN') {
+    return (
+      <AdminPortal 
+        setView={setView} 
+        projects={projects} 
+        posts={posts}
+        refreshData={refreshData}
+      />
     );
   }
 
@@ -40,13 +68,13 @@ const App: React.FC = () => {
 
       <main className="container mx-auto px-4 md:px-8 py-8 max-w-7xl min-h-[80vh]">
         {view === 'HOME' && <Hero setView={setView} />}
-        {view === 'PROJECTS' && <ProjectList />}
-        {view === 'BLOG' && <BlogList />}
+        {view === 'PROJECTS' && <ProjectList projects={projects} />}
+        {view === 'BLOG' && <BlogList posts={posts} />}
       </main>
 
       <Marquee text="KEEP IT SIMPLE // KEEP IT RAW // PUSH TO PRODUCTION // " speed={30} direction="right" className="bg-neo-black text-neo-bg border-y-4 border-neo-black" />
       
-      <Footer />
+      <Footer setView={setView} />
       
       {/* Floating Action Button for Contact (Mobile) */}
       <div className="fixed bottom-8 right-8 md:hidden z-50">
